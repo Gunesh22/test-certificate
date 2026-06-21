@@ -83,16 +83,6 @@
       max-width: 100%;
     }
     #pdfCanvas { display: block; max-width: 100%; height: auto; }
-    #nameOverlay {
-      position: absolute;
-      font-family: 'Alex Brush', cursive;
-      font-weight: normal;
-      font-style: normal;
-      color: rgba(26, 26, 26, 0.9);
-      white-space: nowrap;
-      pointer-events: none;
-      transform-origin: left top;
-    }
     .status { margin-top: 10px; text-align: center; color: #aaa; font-size: 0.85rem; }
   </style>
 </head>
@@ -128,7 +118,6 @@
 
   <div class="preview-wrap" id="previewWrap">
     <canvas id="pdfCanvas"></canvas>
-    <div id="nameOverlay"></div>
   </div>
 
   <script>
@@ -137,6 +126,8 @@
 
     let pdfPageWidth = 0, pdfPageHeight = 0;
     let pdfBytes = null;
+    let offscreenCanvas = null;
+    let offscreenCtx = null;
 
     // Load and render PDF preview
     async function loadPreview() {
@@ -146,45 +137,60 @@
       const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice(0) }).promise;
       const page = await pdf.getPage(1);
 
-      const scale = 1.5;
+      const scale = 2.0; // Higher scale for high-res rendering
       const viewport = page.getViewport({ scale });
       pdfPageWidth = viewport.width / scale;
       pdfPageHeight = viewport.height / scale;
 
+      // Set up offscreen canvas to cache PDF page
+      offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = viewport.width;
+      offscreenCanvas.height = viewport.height;
+      offscreenCtx = offscreenCanvas.getContext('2d');
+
+      await page.render({ canvasContext: offscreenCtx, viewport }).promise;
+
+      // Set visible canvas dimensions
       const canvas = document.getElementById('pdfCanvas');
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
 
-      await page.render({ canvasContext: ctx, viewport }).promise;
       updateOverlay();
     }
 
     function updateOverlay() {
+      if (!offscreenCanvas) return;
+
       const name = document.getElementById('nameInput').value || 'Your Name';
       const xPct = parseInt(document.getElementById('xSlider').value);
       const yPct = parseInt(document.getElementById('ySlider').value);
       const fontSize = parseInt(document.getElementById('fsSlider').value);
 
       const canvas = document.getElementById('pdfCanvas');
-      const overlay = document.getElementById('nameOverlay');
-      const scaleX = canvas.offsetWidth / canvas.width;
+      const ctx = canvas.getContext('2d');
 
-      // Position overlay on the preview
-      const canvasScale = canvas.width / pdfPageWidth;
-      const scaledFontSize = fontSize * canvasScale * scaleX;
+      // Clear visible canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      overlay.style.fontSize = scaledFontSize + 'px';
-      overlay.textContent = name;
+      // Draw background PDF
+      ctx.drawImage(offscreenCanvas, 0, 0);
 
-      // Calculate pixel positions on canvas
-      const pxX = (xPct / 100) * canvas.offsetWidth;
-      const pxY = (yPct / 100) * canvas.offsetHeight;
+      // Draw text directly on visible canvas
+      const scale = canvas.width / pdfPageWidth;
+      const canvasFontSize = fontSize * scale;
 
-      // Center the text horizontally around the X point
-      const textW = overlay.offsetWidth;
-      overlay.style.left = (pxX - textW / 2) + 'px';
-      overlay.style.top = pxY + 'px';
+      ctx.save();
+      ctx.font = `normal ${canvasFontSize}px 'Alex Brush'`;
+      ctx.fillStyle = 'rgba(26, 26, 26, 0.9)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+
+      // Draw baseline of text precisely at canvasY
+      const canvasX = (xPct / 100) * canvas.width;
+      const canvasY = (yPct / 100) * canvas.height;
+
+      ctx.fillText(name, canvasX, canvasY);
+      ctx.restore();
 
       // Calculate actual PDF coordinates for pdf-lib
       // pdf-lib Y is from BOTTOM, so flip it
@@ -203,7 +209,6 @@
     document.getElementById('xSlider').addEventListener('input', updateOverlay);
     document.getElementById('ySlider').addEventListener('input', updateOverlay);
     document.getElementById('fsSlider').addEventListener('input', updateOverlay);
-    window.addEventListener('resize', updateOverlay);
 
     async function generateCertificate() {
       const name = document.getElementById('nameInput').value.trim();
@@ -258,8 +263,10 @@
       btn.disabled = false;
     }
 
-    // Init
-    loadPreview();
+    // Wait for the Google Font to load before rendering so it renders correctly
+    document.fonts.ready.then(() => {
+      loadPreview();
+    });
   </script>
 </body>
 </html>
