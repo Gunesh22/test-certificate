@@ -52,18 +52,7 @@
       margin-bottom: 12px;
     }
     input[type="text"]:focus { border-color: #e2b04a; }
-    .sliders { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 12px; }
-    .slider-group { flex: 1; min-width: 140px; }
-    input[type="range"] { width: 100%; accent-color: #e2b04a; }
-    .coords {
-      background: #0f3460;
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 0.9rem;
-      color: #e2b04a;
-      margin-bottom: 12px;
-    }
+
     button {
       width: 100%;
       padding: 12px;
@@ -96,24 +85,7 @@
     <label for="nameInput">Enter Your Full Name</label>
     <input type="text" id="nameInput" placeholder="e.g. Gunesh Borkar" autofocus>
 
-    <div class="sliders">
-      <div class="slider-group">
-        <label>X Position: <span id="xVal">50</span>%</label>
-        <input type="range" id="xSlider" min="0" max="100" value="50">
-      </div>
-      <div class="slider-group">
-        <label>Y Position: <span id="yVal">52</span>%</label>
-        <input type="range" id="ySlider" min="0" max="100" value="52">
-      </div>
-      <div class="slider-group">
-        <label>Font Size: <span id="fsVal">36</span>px</label>
-        <input type="range" id="fsSlider" min="12" max="72" value="36">
-      </div>
-    </div>
 
-    <div class="coords" id="coordsDisplay">
-      PDF Coordinates → X: 0, Y: 0 | Font Size: 36
-    </div>
 
     <button id="downloadBtn" onclick="generateCertificate()">⬇ Download Certificate PDF</button>
     <div class="status" id="status"></div>
@@ -165,9 +137,9 @@
       if (!offscreenCanvas) return;
 
       const name = document.getElementById('nameInput').value || 'Your Name';
-      const xPct = parseInt(document.getElementById('xSlider').value);
-      const yPct = parseInt(document.getElementById('ySlider').value);
-      const fontSize = parseInt(document.getElementById('fsSlider').value);
+      const fontSize = 44;
+      const targetPdfX = 298;
+      const targetPdfY = 404;
 
       const canvas = document.getElementById('pdfCanvas');
       const ctx = canvas.getContext('2d');
@@ -189,29 +161,15 @@
       ctx.textBaseline = 'alphabetic';
 
       // Draw baseline of text precisely at canvasY
-      const canvasX = (xPct / 100) * canvas.width;
-      const canvasY = (yPct / 100) * canvas.height;
+      const canvasX = targetPdfX * scale;
+      const canvasY = (pdfPageHeight - targetPdfY) * scale;
 
       ctx.fillText(name, canvasX, canvasY);
       ctx.restore();
-
-      // Calculate actual PDF coordinates for pdf-lib
-      // pdf-lib Y is from BOTTOM, so flip it
-      const pdfX = (xPct / 100) * pdfPageWidth;
-      const pdfY = (1 - yPct / 100) * pdfPageHeight;
-
-      document.getElementById('xVal').textContent = xPct;
-      document.getElementById('yVal').textContent = yPct;
-      document.getElementById('fsVal').textContent = fontSize;
-      document.getElementById('coordsDisplay').textContent =
-        `PDF Coordinates → X: ${Math.round(pdfX)}, Y: ${Math.round(pdfY)} | Font Size: ${fontSize}`;
     }
 
     // Event listeners
     document.getElementById('nameInput').addEventListener('input', updateOverlay);
-    document.getElementById('xSlider').addEventListener('input', updateOverlay);
-    document.getElementById('ySlider').addEventListener('input', updateOverlay);
-    document.getElementById('fsSlider').addEventListener('input', updateOverlay);
 
     async function generateCertificate() {
       const name = document.getElementById('nameInput').value.trim();
@@ -233,15 +191,15 @@
         const fontBytesArr = await fontBytesRes.arrayBuffer();
         const font = await pdfDoc.embedFont(fontBytesArr);
 
-        const fontSize = parseInt(document.getElementById('fsSlider').value);
-        const xPct = parseInt(document.getElementById('xSlider').value);
-        const yPct = parseInt(document.getElementById('ySlider').value);
+        const fontSize = 44;
+        const targetPdfX = 298;
+        const targetPdfY = 404;
 
         // Center text at the X position
         const textWidth = font.widthOfTextAtSize(name, fontSize);
-        const pdfX = (xPct / 100) * width - textWidth / 2;
+        const pdfX = targetPdfX - textWidth / 2;
         // Shift up slightly to perfectly match the browser canvas's baseline rendering
-        const pdfY = (1 - yPct / 100) * height + (fontSize * 0.15);
+        const pdfY = targetPdfY + (fontSize * 0.15);
 
         page.drawText(name, {
           x: pdfX,
