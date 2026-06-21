@@ -241,7 +241,7 @@
         const textWidth = font.widthOfTextAtSize(name, fontSize);
         const pdfX = (xPct / 100) * width - textWidth / 2;
         // Shift up slightly to perfectly match the browser canvas's baseline rendering
-        const pdfY = (1 - yPct / 100) * height + (fontSize * 0.08);
+        const pdfY = (1 - yPct / 100) * height + (fontSize * 0.15);
 
         page.drawText(name, {
           x: pdfX,
