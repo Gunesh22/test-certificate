@@ -7,8 +7,11 @@
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: 'Alex Brush';
+      src: url('https://fonts.gstatic.com/s/alexbrush/v22/SZc83FzrJKuqFbwMKk6EtUL57DtOmCc.ttf') format('truetype');
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -237,7 +240,8 @@
         // Center text at the X position
         const textWidth = font.widthOfTextAtSize(name, fontSize);
         const pdfX = (xPct / 100) * width - textWidth / 2;
-        const pdfY = (1 - yPct / 100) * height;
+        // Shift up slightly to perfectly match the browser canvas's baseline rendering
+        const pdfY = (1 - yPct / 100) * height + (fontSize * 0.08);
 
         page.drawText(name, {
           x: pdfX,
